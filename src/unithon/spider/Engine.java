@@ -14,7 +14,6 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.Scanner;
 import java.util.Stack;
@@ -41,17 +40,30 @@ public abstract class Engine implements Closeable {
     /**
      * work service
      */
-    protected ExecutorService executors = Executors.newSingleThreadExecutor();
+    private final ExecutorService download = Executors.newSingleThreadExecutor();
+    /**
+     * parse service
+     */
+    private final ExecutorService parse = Executors.newCachedThreadPool();
     /**
      * used to filter anchor.
      * pass all anchors default.
      */
-    protected AnchorFilter filter = (origin) -> true;
+    protected Filter<URL> filter = (origin) -> true;
+    /**
+     * to mark max entry.
+     */
+    private final int maxEntry;
+    /**
+     *
+     */
+    private final Stack<Page> pages = new Stack<>();
 
     /**
      * @param name spider name
      */
-    public Engine(URL baseURL, String name) {
+    public Engine(URL baseURL, String name, int maxEntry) {
+        this.maxEntry = maxEntry;
         this.baseURL = baseURL;
         if (name.equals("")) {
             this.output = new File("spider-" + new Date().getTime() + ".json");
@@ -62,7 +74,7 @@ public abstract class Engine implements Closeable {
 
     @Override
     public final void close() {
-        executors.shutdown();
+        download.shutdown();
         NativeWriter.createFileWriter(output).add(entries.toJSONString()).flush();
     }
 
@@ -70,22 +82,37 @@ public abstract class Engine implements Closeable {
      * start to execute spider service
      */
     public final void work() {
-        executors.execute(() -> {
+        download.execute(() -> {
             Document base = init(baseURL);
+            // parse root
             fillURLBucket(base, filter);
-            int size = urls.size();
             while (!urls.isEmpty()) {
-                URL url = urls.pop();
-                Document document = fetchDocument(url);
-                JSONObject newsObject = run(document);
-                if (newsObject != null) {
-                    entries.add(newsObject);
-                    Log.i(urls.size() + "/" + size);
+                if (entries.size() < maxEntry) {
+                    parse.execute(() -> {
+                        URL url = urls.pop();
+                        synchronized (pages) {
+                            pages.add(new Page(url, fetchDocument(url)));
+                        }
+                        pages.notifyAll();
+                    });
                 } else {
-                    Log.w("content of " + url + " parse failed.");
+                    break;
                 }
             }
             close();
+        });
+        parse.execute(() -> {
+            Page page;
+            synchronized (pages) {
+                page = pages.pop();
+            }
+            pages.notifyAll();
+            JSONObject newsObject = run(page.getDocument());
+            if (newsObject != null) {
+                entries.add(newsObject);
+            } else {
+                Log.w("content of " + page.getUrl() + "  parse failed.");
+            }
         });
     }
 
@@ -136,12 +163,12 @@ public abstract class Engine implements Closeable {
      * @param htmlDoc html document
      * @param filter  anchor filter rule
      */
-    protected void fillURLBucket(Document htmlDoc, AnchorFilter filter) {
+    protected synchronized void fillURLBucket(Document htmlDoc, Filter<URL> filter) {
         Elements anchors = htmlDoc.getElementsByTag("a");
         anchors.forEach((element -> {
             String href = element.attr("href");
             try {
-                if(checkURL(href)) {
+                if (checkURL(href)) {
                     URL origin = new URL(href);
                     if (filter.doFilter(origin)) {
                         Log.i("'" + origin + "' added.");
@@ -178,7 +205,32 @@ public abstract class Engine implements Closeable {
         }
     }
 
-    private boolean checkURL(String s) {
-        return !s.startsWith("javascript") && !s.equals("") && !s.startsWith("#");
+    /**
+     * do basic filter to avoid {@code MalformedUrlException}
+     *
+     * @param url url string
+     * @return true if it may be a valid url
+     */
+    private boolean checkURL(String url) {
+        return !url.startsWith("javascript") && !url.equals("") && !url.startsWith("#");
+    }
+
+    private static final class Page {
+
+        private final Document document;
+        private final URL url;
+
+        public Page(URL url, Document document) {
+            this.url = url;
+            this.document = document;
+        }
+
+        public Document getDocument() {
+            return document;
+        }
+
+        public URL getUrl() {
+            return url;
+        }
     }
 }

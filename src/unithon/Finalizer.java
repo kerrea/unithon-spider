@@ -22,7 +22,6 @@ final class Finalizer {
 
     private final Stack<Closeable> closeables = new Stack<>();
 
-
     private Finalizer() {
         Log.i("Attached.");
         SignalHandler shutdown = sig -> closeAll();
