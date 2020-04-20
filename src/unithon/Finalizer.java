@@ -17,7 +17,7 @@ final class Finalizer {
     private static Finalizer finalizer;
 
     static {
-        IS_LINUX = System.getProperties().getProperty("os.name").toLowerCase().startsWith("win");
+        IS_LINUX = !System.getProperties().getProperty("os.name").toLowerCase().startsWith("win");
     }
 
     private final Stack<Closeable> closeables = new Stack<>();

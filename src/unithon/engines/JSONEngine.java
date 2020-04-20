@@ -1,12 +1,13 @@
 package unithon.engines;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 
-public abstract class JSONEngine extends Engine<JSON> {
+public abstract class JSONEngine extends Engine<JSONObject> {
 
     /**
      * {@inheritDoc}
@@ -19,7 +20,7 @@ public abstract class JSONEngine extends Engine<JSON> {
      * {@inheritDoc}
      */
     @Override
-    protected JSON init(URL url) throws IOException {
+    protected JSONObject init(URL url) throws IOException {
         return JSON.parseObject(download(url));
     }
 }

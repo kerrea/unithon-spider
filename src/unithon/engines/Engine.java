@@ -15,9 +15,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Date;
 import java.util.Scanner;
-import java.util.Stack;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingDeque;
 
 public abstract class Engine<T> implements Closeable {
     /**
@@ -25,21 +23,9 @@ public abstract class Engine<T> implements Closeable {
      */
     private final File output;
     /**
-     * work service
-     */
-    private final ExecutorService download = Executors.newSingleThreadExecutor();
-    /**
-     * parse service
-     */
-    private final ExecutorService parse = Executors.newCachedThreadPool();
-    /**
      * to mark max entry.
      */
     private final int maxEntry;
-    /**
-     *
-     */
-    private final Stack<Page> pages = new Stack<>();
     /**
      * news data
      */
@@ -47,7 +33,7 @@ public abstract class Engine<T> implements Closeable {
     /**
      * news arraylist
      */
-    protected volatile Stack<URL> urls = new Stack<>();
+    protected LinkedBlockingDeque<URL> urls = new LinkedBlockingDeque<>();
     /**
      * used to filter anchor.
      * pass all anchors default.
@@ -75,7 +61,6 @@ public abstract class Engine<T> implements Closeable {
 
     @Override
     public final void close() {
-        download.shutdown();
         NativeWriter.createFileWriter(output).add(entries.toJSONString()).flush();
     }
 
@@ -83,50 +68,37 @@ public abstract class Engine<T> implements Closeable {
      * start to execute spider service
      */
     public final void work() {
-        download.execute(() -> {
-            T base;
-            try {
-                base = init(baseURL);
-            }catch (IOException e){
-                Log.e(e);
-                return;
-            }
-            // parse root
-            fillURLBucket(base);
-            while (!urls.isEmpty()) {
-                if (entries.size() < maxEntry) {
-                    parse.execute(() -> {
-                        URL url = urls.pop();
-                        synchronized (pages) {
-                            try {
-                                pages.add(new Page(url, fetchDocument(url)));
-                            } catch (IOException e) {
-                                Log.e(e);
-                            }
-                        }
-                        pages.notifyAll();
-                    });
-                } else {
-                    break;
-                }
-            }
-            close();
-        });
-        while (!pages.isEmpty()) {
-            parse.execute(() -> {
-                Page page;
-                synchronized (pages) {
-                    page = pages.pop();
-                }
-                pages.notifyAll();
-                JSONObject newsObject = parsePage(page.getDocument());
-                if (newsObject != null) {
-                    entries.add(newsObject);
-                } else {
-                    Log.w("content of " + page.getUrl() + "  parse failed.");
-                }
-            });
+        try {
+            fillURLBucket(init(baseURL));
+        } catch (IOException e) {
+            Log.e(e);
+            return;
         }
+        while (!urls.isEmpty()) {
+            // if limit is 500, will load 500 items into url entry.
+            if (entries.size() < maxEntry) {
+                URL url;
+                try {
+                    url = urls.pop();
+                } catch (Exception e) {
+                    return;
+                }
+                try {
+                    Page page = new Page(url, fetchDocument(url));
+                    JSONObject newsObject = parsePage(page.getDocument());
+                    if (newsObject != null) {
+                        entries.add(newsObject);
+                    } else {
+                        Log.w("content of " + page.getUrl() + "  parse failed.");
+                    }
+                } catch (IOException e) {
+                    Log.e(e);
+                }
+            } else {
+                break;
+            }
+        }
+        close();
     }
 
     /**
@@ -137,7 +109,7 @@ public abstract class Engine<T> implements Closeable {
      * @throws IOException io error occur
      */
     protected Document fetchDocument(URL url) throws IOException {
-            return Jsoup.parse(download(url));
+        return Jsoup.parse(download(url));
     }
 
     /**
@@ -198,19 +170,19 @@ public abstract class Engine<T> implements Closeable {
         private final JSONArray paragraph = new JSONArray();
         private final JSONObject object = new JSONObject();
 
-        protected News(String title) {
+        public News(String title) {
             object.put("title", title);
         }
 
-        protected void setDate(String date) {
+        public void setDate(String date) {
             object.put("date", date);
         }
 
-        protected void addParagraph(String entry) {
+        public void addParagraph(String entry) {
             paragraph.add(entry);
         }
 
-        protected JSONObject toJSONObject() {
+        public JSONObject toJSONObject() {
             return object.fluentPut("paragraph", paragraph);
         }
     }
