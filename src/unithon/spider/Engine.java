@@ -101,19 +101,21 @@ public abstract class Engine implements Closeable {
             }
             close();
         });
-        parse.execute(() -> {
-            Page page;
-            synchronized (pages) {
-                page = pages.pop();
-            }
-            pages.notifyAll();
-            JSONObject newsObject = run(page.getDocument());
-            if (newsObject != null) {
-                entries.add(newsObject);
-            } else {
-                Log.w("content of " + page.getUrl() + "  parse failed.");
-            }
-        });
+        while (!pages.isEmpty()){
+            parse.execute(() -> {
+                Page page;
+                synchronized (pages) {
+                    page = pages.pop();
+                }
+                pages.notifyAll();
+                JSONObject newsObject = run(page.getDocument());
+                if (newsObject != null) {
+                    entries.add(newsObject);
+                } else {
+                    Log.w("content of " + page.getUrl() + "  parse failed.");
+                }
+            });
+        }
     }
 
     /**
