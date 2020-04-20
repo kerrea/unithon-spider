@@ -1,8 +1,9 @@
-package unithon.spider;
+package unithon.engines;
 
 import com.alibaba.fastjson.JSON;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 
 public abstract class JSONEngine extends Engine<JSON> {
@@ -10,8 +11,8 @@ public abstract class JSONEngine extends Engine<JSON> {
     /**
      * {@inheritDoc}
      */
-    public JSONEngine(URL baseURL, String name, int maxEntry) {
-        super(baseURL, name, maxEntry);
+    public JSONEngine(String api, String name, int maxEntry) throws MalformedURLException {
+        super(api, name, maxEntry);
     }
 
     /**

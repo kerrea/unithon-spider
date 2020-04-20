@@ -1,4 +1,4 @@
-package unithon.spider;
+package unithon.engines;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -11,6 +11,7 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Date;
 import java.util.Scanner;
@@ -23,10 +24,6 @@ public abstract class Engine<T> implements Closeable {
      * output destination
      */
     private final File output;
-    /**
-     * spider start position
-     */
-    private final URL baseURL;
     /**
      * work service
      */
@@ -56,15 +53,19 @@ public abstract class Engine<T> implements Closeable {
      * pass all anchors default.
      */
     protected Filter<URL> urlFilter = (origin) -> true;
+    /**
+     * spider start position
+     */
+    private final URL baseURL;
 
     /**
      * @param baseURL  spider start url
      * @param name     spider name
      * @param maxEntry quantity limit of entry
      */
-    public Engine(URL baseURL, String name, int maxEntry) {
+    public Engine(String baseURL, String name, int maxEntry) throws MalformedURLException {
         this.maxEntry = maxEntry;
-        this.baseURL = baseURL;
+        this.baseURL = new URL(baseURL);
         if (name.equals("")) {
             this.output = new File("spider-" + new Date().getTime() + ".json");
         } else {
@@ -118,7 +119,7 @@ public abstract class Engine<T> implements Closeable {
                     page = pages.pop();
                 }
                 pages.notifyAll();
-                JSONObject newsObject = run(page.getDocument());
+                JSONObject newsObject = parsePage(page.getDocument());
                 if (newsObject != null) {
                     entries.add(newsObject);
                 } else {
@@ -171,7 +172,7 @@ public abstract class Engine<T> implements Closeable {
      *
      * @return json object
      */
-    protected abstract JSONObject run(Document document);
+    protected abstract JSONObject parsePage(Document document);
 
     /**
      * to parse all child node

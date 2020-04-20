@@ -1,4 +1,4 @@
-package unithon.spider;
+package unithon.engines;
 
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
@@ -13,7 +13,7 @@ public abstract class HTMLEngine extends Engine<Document> {
     /**
      * {@inheritDoc}
      */
-    public HTMLEngine(URL baseURL, String name, int maxEntry) {
+    public HTMLEngine(String baseURL, String name, int maxEntry) throws MalformedURLException {
         super(baseURL, name, maxEntry);
     }
 
