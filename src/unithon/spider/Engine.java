@@ -4,7 +4,6 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
-import org.jsoup.select.Elements;
 import unithon.boot.Log;
 import unithon.boot.io.files.NativeWriter;
 
@@ -12,7 +11,6 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Date;
 import java.util.Scanner;
@@ -20,7 +18,7 @@ import java.util.Stack;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public abstract class Engine implements Closeable {
+public abstract class Engine<T> implements Closeable {
     /**
      * output destination
      */
@@ -30,14 +28,6 @@ public abstract class Engine implements Closeable {
      */
     private final URL baseURL;
     /**
-     * news data
-     */
-    protected JSONArray entries = new JSONArray();
-    /**
-     * news arraylist
-     */
-    protected volatile Stack<URL> urls = new Stack<>();
-    /**
      * work service
      */
     private final ExecutorService download = Executors.newSingleThreadExecutor();
@@ -46,11 +36,6 @@ public abstract class Engine implements Closeable {
      */
     private final ExecutorService parse = Executors.newCachedThreadPool();
     /**
-     * used to filter anchor.
-     * pass all anchors default.
-     */
-    protected Filter<URL> filter = (origin) -> true;
-    /**
      * to mark max entry.
      */
     private final int maxEntry;
@@ -58,9 +43,24 @@ public abstract class Engine implements Closeable {
      *
      */
     private final Stack<Page> pages = new Stack<>();
+    /**
+     * news data
+     */
+    protected JSONArray entries = new JSONArray();
+    /**
+     * news arraylist
+     */
+    protected volatile Stack<URL> urls = new Stack<>();
+    /**
+     * used to filter anchor.
+     * pass all anchors default.
+     */
+    protected Filter<URL> urlFilter = (origin) -> true;
 
     /**
-     * @param name spider name
+     * @param baseURL  spider start url
+     * @param name     spider name
+     * @param maxEntry quantity limit of entry
      */
     public Engine(URL baseURL, String name, int maxEntry) {
         this.maxEntry = maxEntry;
@@ -83,15 +83,25 @@ public abstract class Engine implements Closeable {
      */
     public final void work() {
         download.execute(() -> {
-            Document base = init(baseURL);
+            T base;
+            try {
+                base = init(baseURL);
+            }catch (IOException e){
+                Log.e(e);
+                return;
+            }
             // parse root
-            fillURLBucket(base, filter);
+            fillURLBucket(base);
             while (!urls.isEmpty()) {
                 if (entries.size() < maxEntry) {
                     parse.execute(() -> {
                         URL url = urls.pop();
                         synchronized (pages) {
-                            pages.add(new Page(url, fetchDocument(url)));
+                            try {
+                                pages.add(new Page(url, fetchDocument(url)));
+                            } catch (IOException e) {
+                                Log.e(e);
+                            }
                         }
                         pages.notifyAll();
                     });
@@ -101,7 +111,7 @@ public abstract class Engine implements Closeable {
             }
             close();
         });
-        while (!pages.isEmpty()){
+        while (!pages.isEmpty()) {
             parse.execute(() -> {
                 Page page;
                 synchronized (pages) {
@@ -123,23 +133,28 @@ public abstract class Engine implements Closeable {
      *
      * @param url origin
      * @return parsed document
+     * @throws IOException io error occur
      */
-    protected Document fetchDocument(URL url) {
-        try {
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.connect();
-            Scanner scanner = new Scanner(connection.getInputStream());
-            StringBuilder documentString = new StringBuilder();
-            while (scanner.hasNext()) {
-                documentString.append(scanner.next()).append(" ");
-            }
-            connection.disconnect();
-            String document = documentString.toString();
-            return Jsoup.parse(document);
-        } catch (IOException e) {
-            Log.e(e);
-            return null;
+    protected Document fetchDocument(URL url) throws IOException {
+            return Jsoup.parse(download(url));
+    }
+
+    /**
+     * download from target destination
+     * @param url           destination
+     * @return              downloaded string
+     * @throws IOException  io error occur.
+     */
+    protected final String download(URL url) throws IOException {
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.connect();
+        Scanner scanner = new Scanner(connection.getInputStream());
+        StringBuilder builder = new StringBuilder();
+        while (scanner.hasNext()) {
+            builder.append(scanner.next()).append(" ");
         }
+        connection.disconnect();
+        return builder.toString();
     }
 
     /**
@@ -147,10 +162,9 @@ public abstract class Engine implements Closeable {
      *
      * @param url base url
      * @return base document
+     * @throws IOException  io error occur.
      */
-    protected Document init(URL url) {
-        return fetchDocument(url);
-    }
+    protected abstract T init(URL url)  throws IOException;
 
     /**
      * read url html data.
@@ -162,31 +176,24 @@ public abstract class Engine implements Closeable {
     /**
      * to parse all child node
      *
-     * @param htmlDoc html document
-     * @param filter  anchor filter rule
+     * @param src url source
      */
-    protected synchronized void fillURLBucket(Document htmlDoc, Filter<URL> filter) {
-        Elements anchors = htmlDoc.getElementsByTag("a");
-        anchors.forEach((element -> {
-            String href = element.attr("href");
-            try {
-                if (checkURL(href)) {
-                    URL origin = new URL(href);
-                    if (filter.doFilter(origin)) {
-                        Log.i("'" + origin + "' added.");
-                        urls.push(origin);
-                    }
-                }
-            } catch (MalformedURLException e) {
-                Log.e("'" + href + "' is not an valid url.");
-            }
-        }));
+    protected abstract void fillURLBucket(T src);
+
+    /**
+     * do basic filter to avoid {@code MalformedUrlException}
+     *
+     * @param url url string
+     * @return true if it may be a valid url
+     */
+    protected boolean checkURL(String url) {
+        return !url.startsWith("javascript") && !url.equals("") && !url.startsWith("#");
     }
 
     /**
      * a class to represent news data
      */
-    protected static class News {
+    protected static final class News {
         private final JSONArray paragraph = new JSONArray();
         private final JSONObject object = new JSONObject();
 
@@ -207,17 +214,7 @@ public abstract class Engine implements Closeable {
         }
     }
 
-    /**
-     * do basic filter to avoid {@code MalformedUrlException}
-     *
-     * @param url url string
-     * @return true if it may be a valid url
-     */
-    private boolean checkURL(String url) {
-        return !url.startsWith("javascript") && !url.equals("") && !url.startsWith("#");
-    }
-
-    private static final class Page {
+    protected static final class Page {
 
         private final Document document;
         private final URL url;
