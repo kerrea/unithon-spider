@@ -74,7 +74,7 @@ final class Finalizer {
         closeables.push(closeable);
     }
 
-    private void closeAll() {
+    void closeAll() {
         while (!closeables.empty()) {
             Closeable closeable = closeables.pop();
             try {

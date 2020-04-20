@@ -98,7 +98,6 @@ public abstract class Engine<T> implements Closeable {
                 break;
             }
         }
-        close();
     }
 
     /**

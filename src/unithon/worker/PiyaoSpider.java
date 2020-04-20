@@ -11,9 +11,11 @@ import java.net.MalformedURLException;
 import java.net.URL;
 
 public class PiyaoSpider extends JSONEngine {
+    private long time;
 
-    public PiyaoSpider(int max) throws MalformedURLException {
-        super("https://piyao.sina.cn/api/list/group?len=" + max, "piyao", max);
+    public PiyaoSpider(long time) throws MalformedURLException {
+        super("https://piyao.sina.cn/api/list/group?len=50&ptime=" + time, "piyao-" + time, 50);
+        this.time = time;
         urlFilter = (origin -> origin.getPath().endsWith(".html"));
     }
 
@@ -38,11 +40,13 @@ public class PiyaoSpider extends JSONEngine {
             JSONArray newsArray = (JSONArray) v;
             newsArray.forEach((news) -> {
                 assert news instanceof JSONObject;
-                String s = ((JSONObject) news).getString("url");
+                var j = (JSONObject) news;
+                time = Math.min(j.getLong("ptime"),time);
+                String s = j.getString("url");
                 s = s.replaceAll("\\\\/", "");
                 try {
                     URL url = new URL(s);
-                    if(urlFilter.doFilter(url)){
+                    if (urlFilter.doFilter(url)) {
                         urls.push(url);
                     }
                 } catch (MalformedURLException e) {
@@ -50,5 +54,9 @@ public class PiyaoSpider extends JSONEngine {
                 }
             });
         });
+    }
+
+    public long getTime() {
+        return time;
     }
 }
