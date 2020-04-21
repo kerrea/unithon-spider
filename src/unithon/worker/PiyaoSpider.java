@@ -10,7 +10,7 @@ import unithon.engines.JSONEngine;
 import java.net.MalformedURLException;
 import java.net.URL;
 
-public class PiyaoSpider extends JSONEngine {
+public final class PiyaoSpider extends JSONEngine {
     private long time;
 
     public PiyaoSpider(long time) throws MalformedURLException {
