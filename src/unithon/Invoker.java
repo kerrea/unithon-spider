@@ -1,54 +1,85 @@
 package unithon;
 
-import unithon.worker.CNTVSpider;
-import unithon.worker.PiyaoSpider;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.serializer.SerializerFeature;
+import com.hankcs.hanlp.HanLP;
+import com.hankcs.hanlp.classification.tokenizers.HanLPTokenizer;
+import com.hankcs.hanlp.corpus.tag.Nature;
 
-import java.net.MalformedURLException;
-import java.util.Date;
+import com.hankcs.hanlp.seg.Segment;
+import unithon.boot.io.files.FileHelper;
+import unithon.boot.io.files.NativeReader;
+import unithon.boot.io.files.NativeWriter;
+
+import java.util.ArrayList;
 
 /**
- * server boot up code!
+ * boot up code!
  */
 public final class Invoker {
-    public static void main(String[] args) throws MalformedURLException {
-        Finalizer finalizer = Finalizer.getInstance();
-        /*
-        finalizer.addCloseable(closeable);
-        used to save data when exit.
-        */
-        // --------------------- rumor breaker ------------------------
-        {
-            PiyaoSpider[] spiders = new PiyaoSpider[3];
-            for (int i = 0; i < spiders.length; i++) {
-                if (i == 0) {
-                    spiders[0] = new PiyaoSpider(new Date().getTime() / 1000);
-                    spiders[0].work();
-                    finalizer.addCloseable(spiders[0]);
-                } else {
-                    spiders[i] = new PiyaoSpider(spiders[i - 1].getTime());
-                    spiders[i].work();
-                    finalizer.addCloseable(spiders[i]);
+    private static final JSONArray ROOT = new JSONArray();
+
+    public static void main(String[] args) {
+        Segment segment = HanLP.newSegment();
+        JSONObject analyzed = new JSONObject();
+        JSONArray merge = JSONArray.parseArray(NativeReader.createFileReader("merged.json").getResult());
+        merge.forEach((news) -> {
+            assert news instanceof JSONObject;
+            JSONObject object = (JSONObject) news;
+            String title = object.getString("title");
+            StringBuilder builder = new StringBuilder();
+            JSONArray para = object.getJSONArray("paragraph");
+            para.forEach((string) -> {
+                assert string instanceof String;
+                String str = (String) string;
+                builder.append(str);
+            });
+            String content = builder.toString();
+            JSONObject result = new JSONObject();
+            String md5 = FileHelper.getMD5(title.getBytes());
+            if (!analyzed.containsKey(md5)) {
+                result.put("title", title);
+                ArrayList<String> position = filter(segment, Nature.ns, content),
+                        people = filter(segment, Nature.nr, content),
+                        org = filter(segment, Nature.nt, content);
+                ArrayList<String> entities = new ArrayList<>();
+                entities.addAll(position);
+                entities.addAll(people);
+                entities.addAll(org);
+                result.put("positions", position);
+                result.put("people", people);
+                result.put("organizations", org);
+                result.put("entities", entities);
+                result.put("content", content);
+                analyzed.putIfAbsent(md5, result);
+            }
+        });
+        // ---------------------------- output ------------------------------------------
+        ArrayList<JSONObject> objects = new ArrayList<>();
+        analyzed.forEach((k, v) -> {
+            assert v instanceof JSONObject;
+            objects.add((JSONObject) v);
+        });
+        ROOT.addAll(objects);
+        stop();
+    }
+
+    private static ArrayList<String> filter(Segment segment, Nature nature, String content) {
+        ArrayList<String> result = new ArrayList<>();
+        segment.seg(content).stream()
+                .filter((v) -> v.nature.equals(nature)).forEach((v) -> {
+                    String word = v.word;
+                    if (!result.contains(word)) {
+                        result.add(v.word);
+                    }
                 }
-            }
-        }
-        // -------------------------- cctv ----------------------------
-        {
-            CNTVSpider[] spiders = new CNTVSpider[7];
-            for (int i = 0; i < spiders.length; i++) {
-                spiders[i] = new CNTVSpider(i + 1);
-                spiders[i].work();
-                finalizer.addCloseable(spiders[i]);
-            }
-        }
-        // -------------------------- qq ------------------------------
-        {
+        );
+        return result;
+    }
 
-        }
-        // -----------------------  sina ------------------------------
-        {
-
-        }
-        // make sure close method will be called.
-        finalizer.closeAll();
+    private static void stop() {
+        NativeWriter.createFileWriter("root.json").add(ROOT.toString()).flush();
+        Runtime.getRuntime().exit(0);
     }
 }

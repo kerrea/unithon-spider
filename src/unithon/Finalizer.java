@@ -12,7 +12,7 @@ import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
 import java.util.Stack;
 
-final class Finalizer {
+public final class Finalizer {
     private static final boolean IS_LINUX;
     private static Finalizer finalizer;
 
@@ -54,7 +54,7 @@ final class Finalizer {
     }
 
 
-    static Finalizer getInstance() {
+    public static Finalizer getInstance() {
         if (finalizer == null) {
             finalizer = new Finalizer();
         }
@@ -74,7 +74,7 @@ final class Finalizer {
         closeables.push(closeable);
     }
 
-    void closeAll() {
+    public void closeAll() {
         while (!closeables.empty()) {
             Closeable closeable = closeables.pop();
             try {

@@ -117,8 +117,9 @@ public abstract class Engine<T> implements Closeable {
      * @return              downloaded string
      * @throws IOException  io error occur.
      */
-    protected final String download(URL url) throws IOException {
+    protected String download(URL url) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.addRequestProperty("Accept-Charset", "utf-8");
         connection.connect();
         Scanner scanner = new Scanner(connection.getInputStream());
         StringBuilder builder = new StringBuilder();
