@@ -21,15 +21,18 @@ public class TreeGenerator {
         JSONArray newsList = JSONArray
                 .parseArray(NativeReader.createFileReader("distance_clean.json")
                         .getResult());
-        System.out.println(newsList.size());
-        Runtime.getRuntime().exit(0);
         for (int i = 0; i < newsList.size(); i++) {
             JSONArray array = new JSONArray();
             for (int j = 0; j < newsList.size(); j++) {
                 if (i == j) {
                     array.add(1);
                 } else {
-                    array.add(cosDistance(newsList.getJSONObject(i), newsList.getJSONObject(j), "entities"));
+                    double distance = cosDistance(newsList.getJSONObject(i), newsList.getJSONObject(j), "entities");
+                    if (distance < 0.01) {
+                        array.add(0);
+                    } else {
+                        array.add(distance);
+                    }
                 }
             }
             newsList.getJSONObject(i).put("distance", array);
@@ -75,7 +78,7 @@ public class TreeGenerator {
             return 0;
         }
         double result = sumAB.get() / ((Math.pow(sumA.get(), 0.5) * Math.pow(sumB.get(), 0.5)));
-        return Math.rint(result * 10000)/ 10000.0;
+        return Math.rint(result * 10000) / 10000.0;
     }
 
     private static void stop(JSONArray result) {

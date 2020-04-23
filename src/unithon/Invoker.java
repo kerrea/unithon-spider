@@ -2,9 +2,7 @@ package unithon;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.hankcs.hanlp.HanLP;
-import com.hankcs.hanlp.classification.tokenizers.HanLPTokenizer;
 import com.hankcs.hanlp.corpus.tag.Nature;
 
 import com.hankcs.hanlp.seg.Segment;

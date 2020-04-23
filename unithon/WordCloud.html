@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>HotMap</title>
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            min-height: 100vh;
+        }
+        div#relative {
+            min-height: 100vh;
+            min-width: 100vh;
+        }
+    </style>
+</head>
+<body>
+<div id="relative"></div>
+</body>
+<script src="//cdn.4tune.top/zing/zingchart.min.js"></script>
+<script src="Render.js"></script>
+<script src="WordCloudRender.js"></script>
+<script>
+    let parse = ()=> {
+        let search = window.location.search.substr(1);
+        let array = search.split("&");
+        let result = {}
+        array.forEach((v) => {
+            if (v.indexOf("=") === -1) {
+                result[v] = null
+            } else {
+                let pair = v.split("=");
+                result[pair[0]] = pair[1];
+            }
+        });
+        return result;
+    }
+
+    let parameter = parse();
+    let render = new WordCloudRender();
+
+    setTimeout(()=> {
+        zingchart.render({
+            id: "relative",
+            data: render.render(parameter.type),
+            height: '100%',
+            width: '100%'
+        });
+    },1000);
+</script>
+</html>

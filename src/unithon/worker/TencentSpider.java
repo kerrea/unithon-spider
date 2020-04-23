@@ -1,7 +1,6 @@
 package unithon.worker;
 
 import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.serializer.SerializerFeature;
 import org.jsoup.nodes.Document;
 import unithon.boot.Log;
 import unithon.engines.JSONEngine;

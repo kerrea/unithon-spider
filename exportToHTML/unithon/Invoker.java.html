@@ -1,0 +1,37 @@
+<html>
+<head>
+<title>Invoker.java</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #a9b7c6;}
+.s1 { color: #cc7832;}
+.s2 { color: #6a8759;}
+.s3 { color: #808080;}
+.s4 { color: #6897bb;}
+</style>
+</head>
+<body bgcolor="#2b2b2b">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+Invoker.java</font>
+</center></td></tr></table>
+<pre>
+            <span class="s1">if </span><span class="s0">(!analyzed.containsKey(md5)) {</span>
+                <span class="s0">result.put(</span><span class="s2">&quot;title&quot;</span><span class="s1">, </span><span class="s0">title)</span><span class="s1">;</span>
+                <span class="s0">ArrayList&lt;String&gt; position = filter(segment</span><span class="s1">, </span><span class="s0">Nature.ns</span><span class="s1">, </span><span class="s0">content)</span><span class="s1">,</span>
+                        <span class="s0">people = filter(segment</span><span class="s1">, </span><span class="s0">Nature.nr</span><span class="s1">, </span><span class="s0">content)</span><span class="s1">,</span>
+                        <span class="s0">org = filter(segment</span><span class="s1">, </span><span class="s0">Nature.nt</span><span class="s1">, </span><span class="s0">content)</span><span class="s1">;</span>
+                <span class="s0">ArrayList&lt;String&gt; entities = </span><span class="s1">new </span><span class="s0">ArrayList&lt;&gt;()</span><span class="s1">;</span>
+                <span class="s0">entities.addAll(position)</span><span class="s1">;</span>
+                <span class="s0">entities.addAll(people)</span><span class="s1">;</span>
+                <span class="s0">entities.addAll(org)</span><span class="s1">;</span>
+                <span class="s0">result.put(</span><span class="s2">&quot;positions&quot;</span><span class="s1">, </span><span class="s0">position)</span><span class="s1">;</span>
+                <span class="s0">result.put(</span><span class="s2">&quot;people&quot;</span><span class="s1">, </span><span class="s0">people)</span><span class="s1">;</span>
+                <span class="s0">result.put(</span><span class="s2">&quot;organizations&quot;</span><span class="s1">, </span><span class="s0">org)</span><span class="s1">;</span>
+                <span class="s0">result.put(</span><span class="s2">&quot;entities&quot;</span><span class="s1">, </span><span class="s0">entities)</span><span class="s1">;</span>
+                <span class="s0">result.put(</span><span class="s2">&quot;content&quot;</span><span class="s1">, </span><span class="s0">content)</span><span class="s1">;</span>
+                <span class="s0">analyzed.putIfAbsent(md5</span><span class="s1">, </span><span class="s0">result)</span><span class="s1">;</span>
+            <span class="s0">}</span></pre>
+</body>
+</html>

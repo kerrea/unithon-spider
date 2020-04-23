@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="hanlp-1.7.7">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/libs/hanlp-1.7.7/hanlp-1.7.7.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$PROJECT_DIR$/libs/hanlp-1.7.7/hanlp-1.7.7-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
